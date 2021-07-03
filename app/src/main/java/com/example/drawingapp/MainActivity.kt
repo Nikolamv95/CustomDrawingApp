@@ -1,10 +1,12 @@
 package com.example.drawingapp
 
 import android.Manifest
+import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -50,6 +52,10 @@ class MainActivity : AppCompatActivity() {
             showBrushSizeChooserDialog()
         }
 
+        setupOnClickListeners()
+    }
+
+    private fun setupOnClickListeners() {
         binding.ibGallery.setOnClickListener {
             // If permission is allowed do something
             if (isReadStorageAllowed()) {
@@ -75,10 +81,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == STORAGE_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
                 Toast.makeText(
                     this, "Permission granted now you can read storage files",
                     Toast.LENGTH_SHORT
@@ -98,41 +108,40 @@ class MainActivity : AppCompatActivity() {
 
         if (resultCode == Activity.RESULT_OK) {
             if (requestCode == GALLERY) {
-                try {
-                    if (data!!.data != null) {
-                        binding.ivBackground.visibility = View.VISIBLE
-                        binding.ivBackground.setImageURI(data.data)
-                    } else {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Error in prasing the images or its corrupted.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                if (data!!.data != null) {
+                    binding.ivBackground.visibility = View.VISIBLE
+                    binding.ivBackground.setImageURI(data.data)
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Error in prasing the images or its corrupted.",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
     fun paintClicked(view: View) {
-        if (view !== mImageButtonCurrentPaint) {
-            val imageButton = view as ImageButton
-
-            val colorTag = imageButton.tag.toString()
-            binding.drawingView.setColor(colorTag)
-
-            imageButton.setImageDrawable(
-                ContextCompat.getDrawable(this, R.drawable.pallet_pressed)
-            )
-
-            mImageButtonCurrentPaint!!.setImageDrawable(
-                ContextCompat.getDrawable(this, R.drawable.pallet_normal)
-            )
-
-            mImageButtonCurrentPaint = view
+        if (view === mImageButtonCurrentPaint) {
+            return
         }
+
+        val imageButton = view as ImageButton
+
+        val colorTag = imageButton.tag.toString()
+        binding.drawingView.setColor(colorTag)
+
+        imageButton.setImageDrawable(
+            ContextCompat.getDrawable(this, R.drawable.pallet_pressed)
+        )
+
+        mImageButtonCurrentPaint!!.setImageDrawable(
+            ContextCompat.getDrawable(this, R.drawable.pallet_normal)
+        )
+
+        mImageButtonCurrentPaint = view
+
     }
 
     private fun showBrushSizeChooserDialog() {
@@ -165,7 +174,7 @@ class MainActivity : AppCompatActivity() {
         if (ActivityCompat.shouldShowRequestPermissionRationale(
                 this,
                 arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
                 ).toString()
             )
@@ -178,17 +187,16 @@ class MainActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(
             this,
             arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
+                READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             ), STORAGE_PERMISSION_CODE
         )
     }
 
-    private fun isReadStorageAllowed(): Boolean {
-        val result =
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-        return result == PackageManager.PERMISSION_GRANTED
-    }
+    private fun isReadStorageAllowed() =
+        ContextCompat.checkSelfPermission(this, READ_EXTERNAL_STORAGE) ==
+                PERMISSION_GRANTED
+
 
     private fun getBitmapFromView(view: View): Bitmap {
         val returnedBitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -260,19 +268,14 @@ class MainActivity : AppCompatActivity() {
 
         override fun onPostExecute(result: String?) {
             cancelProgressDialog()
-
-            if (result!!.isNotEmpty()) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "File saved successfully :$result", Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                Toast.makeText(
-                    this@MainActivity,
-                    "Something went wrong while saving the file :$result", Toast
-                        .LENGTH_SHORT
-                ).show()
-            }
+            Toast.makeText(
+                this@MainActivity,
+                if (result!!.isNotEmpty()) {
+                    "File saved successfully :$result"
+                } else {
+                    "Something went wrong while saving the file :$result"
+                       }, Toast.LENGTH_SHORT
+            ).show()
 
             MediaScannerConnection.scanFile(this@MainActivity, arrayOf(result), null) { path, uri ->
                 val shareIntent = Intent()
@@ -285,19 +288,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         private fun showProgressDialog() {
-            mProgressDialog = Dialog(this@MainActivity)
-            mProgressDialog.setContentView(R.layout.dialog_custom_progress)
-            mProgressDialog.show()
+            mProgressDialog = Dialog(this@MainActivity).apply {
+                setContentView(R.layout.dialog_custom_progress)
+                show()
+            }
         }
 
         private fun cancelProgressDialog() {
             mProgressDialog.dismiss()
         }
     }
-
-    companion object {
-        private const val STORAGE_PERMISSION_CODE = 1
-        private const val GALLERY = 2
-
-    }
 }
+
+private const val STORAGE_PERMISSION_CODE = 1
+private const val GALLERY = 2

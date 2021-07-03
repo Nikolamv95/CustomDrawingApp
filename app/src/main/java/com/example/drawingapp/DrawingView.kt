@@ -5,31 +5,34 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
-import android.view.View
+import com.google.android.material.textfield.TextInputEditText
 
-class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) {
+class DrawingView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null
+) : TextInputEditText(context, attrs) {
 
-    private var mDrawPath: CustomPath? = null
-    private var mCanvasBitmap: Bitmap? = null
-    private var mDrawPaint: Paint? = null
-    private var mCanvasPaint: Paint? = null
-    private var mBrushSize: Float = 0.toFloat()
+    private var drawPath: LinePath? = null
+    private var canvasBitmap: Bitmap? = null
+    private var drawPaint: Paint? = null
+    private var canvasPaint: Paint? = null
+    private var brushSize: Float = 0f
     private var color = Color.BLACK
     private var canvas: Canvas? = null
-    private val mPaths = ArrayList<CustomPath>()
-    private val mUndoPath = ArrayList<CustomPath>()
+    private val mPaths = ArrayList<LinePath>()
+    private val mUndoPath = ArrayList<LinePath>()
 
     init {
         setUpDrawing()
     }
 
     fun setSizeForBrush(newSize: Float) {
-        mBrushSize = TypedValue.applyDimension(
+        brushSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             newSize,
             resources.displayMetrics
         )
-        mDrawPaint?.strokeWidth ?: mBrushSize
+        drawPaint?.strokeWidth ?: brushSize
     }
 
     fun onClickUndo() {
@@ -41,19 +44,19 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.drawBitmap(mCanvasBitmap!!, 0f, 0f, mCanvasPaint)
+        canvas.drawBitmap(canvasBitmap!!, 0f, 0f, canvasPaint)
 
         // Draw the lines on screen
         for (path in mPaths) {
-            mDrawPaint!!.strokeWidth = path.brushThickness
-            mDrawPaint!!.color = path.color
-            canvas.drawPath(path, mDrawPaint!!)
+            drawPaint?.strokeWidth = path.brushThickness
+            drawPaint?.color = path.color
+            canvas.drawPath(path, drawPaint!!)
         }
 
-        if (!mDrawPath!!.isEmpty) {
-            mDrawPaint!!.strokeWidth = mDrawPath!!.brushThickness
-            mDrawPaint!!.color = mDrawPath!!.color
-            canvas.drawPath(mDrawPath!!, mDrawPaint!!)
+        if (drawPath?.isEmpty == false) {
+            drawPaint?.strokeWidth = drawPath!!.brushThickness
+            drawPaint?.color = drawPath!!.color
+            canvas.drawPath(drawPath!!, drawPaint!!)
         }
     }
 
@@ -63,17 +66,17 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                mDrawPath!!.color = color
-                mDrawPath!!.brushThickness = mBrushSize
-                mDrawPath!!.reset()
-                mDrawPath!!.moveTo(touchX, touchY)
+                drawPath?.color = color
+                drawPath?.brushThickness = brushSize
+                drawPath?.reset()
+                drawPath?.moveTo(touchX, touchY)
             }
             MotionEvent.ACTION_MOVE -> {
-                mDrawPath!!.lineTo(touchX, touchY)
+                drawPath?.lineTo(touchX, touchY)
             }
             MotionEvent.ACTION_UP -> {
-                mPaths.add(mDrawPath!!)
-                mDrawPath = CustomPath(color, mBrushSize)
+                mPaths.add(drawPath!!)
+                drawPath = LinePath(color, brushSize)
             }
             else -> return false
         }
@@ -83,25 +86,25 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
     }
 
     private fun setUpDrawing() {
-        mDrawPaint = Paint()
-        mDrawPath = CustomPath(color, mBrushSize)
-        mDrawPaint!!.color = color
-        mDrawPaint!!.style = Paint.Style.STROKE
-        mDrawPaint!!.strokeJoin = Paint.Join.ROUND
-        mDrawPaint!!.strokeCap = Paint.Cap.ROUND
-        mCanvasPaint = Paint(Paint.DITHER_FLAG)
+        drawPaint = Paint()
+        drawPath = LinePath(color, brushSize)
+        drawPaint?.color = color
+        drawPaint?.style = Paint.Style.STROKE
+        drawPaint?.strokeJoin = Paint.Join.ROUND
+        drawPaint?.strokeCap = Paint.Cap.ROUND
+        canvasPaint = Paint(Paint.DITHER_FLAG)
     }
 
     override fun onSizeChanged(w: Int, h: Int, wprev: Int, hprev: Int) {
         super.onSizeChanged(w, h, wprev, hprev)
-        mCanvasBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        canvas = Canvas(mCanvasBitmap!!)
+        canvasBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        canvas = Canvas(canvasBitmap!!)
     }
 
     fun setColor(newColor: String) {
         color = Color.parseColor(newColor)
-        mDrawPaint!!.color = color
+        drawPaint?.color = color
     }
 
-    internal inner class CustomPath(var color: Int, var brushThickness: Float) : Path()
+    private class LinePath(var color: Int, var brushThickness: Float) : Path()
 }
